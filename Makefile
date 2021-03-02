@@ -1,14 +1,4 @@
 # ----------------------------------
-#         LOCAL SET UP
-# ----------------------------------
-
-install:
-	@pip install -r requirements.txt
-
-install_requirements:
-	@pip install -r requirements.txt
-
-# ----------------------------------
 #         HEROKU COMMANDS
 # ----------------------------------
 

@@ -3,7 +3,6 @@ FROM python:3.8.6-buster
 
 ### COPY file needed for the Docker images
 COPY . .
-COPY Fed_up /Fed_up
 
 ### RUN the directives to install the dependancies
 RUN pip3 install --upgrade pip
@@ -11,4 +10,4 @@ RUN pip3 install -r requirements.txt
 RUN make install
 
 ### CMD apply the command that the container should run once it has started
-CMD streamlit run app/pages/app.py 
+CMD streamlit run app.py 
