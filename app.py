@@ -1,10 +1,13 @@
 import streamlit as st
 import requests
 import datetime
-from Tools.utils import geocoder_here
+from Tools.utils import geocoder_here, haversine2
 from PIL import Image
 import pandas as pd
-
+from streamlit_folium import folium_static
+import folium
+import math
+import time
 
 st.set_page_config(
     page_title="NYC TaxiFare", # => NYC TaxiFare Prediction - Streamlit
@@ -12,7 +15,7 @@ st.set_page_config(
     layout="wide", # wide
     initial_sidebar_state="auto") # collapsed
 
-_, title1, title2 = st.beta_columns([1.75,0.5,5])
+_, title1, title2 = st.columns([1.75,0.5,5])
 image = Image.open('images/lewagon.png')
 with title1:
     st.image(image, caption="Le Wagon", width=64, use_column_width=None)
@@ -21,25 +24,21 @@ with title2:
 
 st.markdown("")
 
-
 map_df = pd.DataFrame({
     "lat": [40.71782, 40.73451],
     "lon": [-74.00547, -73.99853]
     })
 
-
-
-st.sidebar.markdown("_Fill the information form below to get a New York City Taxi Fare Prediction_")
 st.sidebar.markdown("### Datetime")
 
 ### Request Date of the course ###
-date_col1, date_col2  = st.sidebar.beta_columns([1.75,1])
+date_col1, date_col2  = st.sidebar.columns([1.6,1.2])
 with date_col1:
-    d = st.date_input("Date :", datetime.datetime.now())
+    d = st.date_input("When?", datetime.datetime.now())
 
 ### Request Time of the course ###
 with date_col2:
-    t = st.time_input('Time :', datetime.datetime.now())
+    t = st.time_input("What time?", datetime.datetime.now())
 
 ### Format the datetime for our API ###
 pickup_datetime = f"{d} {t} UTC"
@@ -49,7 +48,7 @@ pickup_datetime = f"{d} {t} UTC"
 
 ### Request the Pickup location ###
 st.sidebar.markdown("### Pickup Location")
-pickup_adress = st.sidebar.text_input("Please enter the pickup address", "Central Park, NewYork")
+pickup_adress = st.sidebar.text_input("Where are you?", "Central Park, NewYork")
 
 ### Getting Coordinates from Address locations ###
 error1 = ""
@@ -61,7 +60,7 @@ except IndexError:
     pickup_coords = {
         "latitude": 40.78392,
         "longitude": -73.96584
-    }
+    }   
 
 
 pickup_latitude = pickup_coords['latitude']
@@ -78,7 +77,7 @@ else:
 
 ### Request the Dropoff location ###
 st.sidebar.markdown("### Dropoff Location")
-dropoff_address = st.sidebar.text_input("Please enter the dropoff address", "JFK, NewYork")
+dropoff_address = st.sidebar.text_input("Where are you going?", "JFK, NewYork")
 
 ### Getting Coordinates from Address locations ###
 error2 = ""
@@ -104,12 +103,24 @@ else:
     st.sidebar.error(f'"{dropoff_address}" {error2} Lat: {dropoff_latitude}, Lon: {dropoff_longitude}')
 
 ### Request the Passenger Count ###
-st.sidebar.markdown("### Passengers")
-passenger_count = st.sidebar.slider('Please enter number of passengers', 1, 9, 1)
+# st.sidebar.markdown("### Passengers")
+# passenger_count = st.sidebar.slider('Please enter number of passengers', 1, 9, 1)
+passenger_count = 1
+st.sidebar.markdown("_Not alone? Don't worries, we will drive you and your buddies for the same price!_ 😎️")
+
+hav_df = {
+    "pickup_latitude":pickup_latitude,
+    "pickup_longitude":pickup_longitude,
+    "dropoff_latitude":dropoff_latitude,
+    "dropoff_longitude":dropoff_longitude
+}
+
+drive_distance = haversine2(hav_df)
+zoom_distance = math.log2(drive_distance)
 
 ### Launch Fare Prediction ###
-st.sidebar.markdown("### Prediction")
-if st.sidebar.button('Get Fare Prediction'):
+if st.sidebar.button("Let's Go! 🚕️💨️"):
+    
 
     params = {
         "key" : str(pickup_datetime),
@@ -125,7 +136,46 @@ if st.sidebar.button('Get Fare Prediction'):
     response = requests.get(
     url=cloud_url, params=params
     ).json()
+    my_bar = st.sidebar.progress(0)
+    for percent_complete in range(100):
+        time.sleep(0.01)
+        my_bar.progress(percent_complete + 1)
+    with st.spinner(f"Driving Distance : {round(drive_distance, 2)}kms"):
+        time.sleep(2)
+    
+    st.info(f"This drive from {pickup_adress} to {dropoff_address} will cost {round(response['prediction'], 2)}$ 💸️")
 
-    st.info(f"Taxi Fare Predication from {pickup_adress} to {dropoff_address} : {round(response['prediction'], 2)}$ 🎉")
 
-st.map(data=map_df, use_container_width=False)
+#### FOLIUM MAP ####
+init_lat = (map_df.loc[1, 'lat']+map_df.loc[0, 'lat'])/2
+init_lon = (map_df.loc[1, 'lon']+map_df.loc[0, 'lon'])/2
+
+
+m = folium.Map(location=[init_lat, init_lon], max_bounds=True, zoom_start=15-zoom_distance, min_zoom = 2, max_zoom=20)
+
+folium.TileLayer('OpenStreetMap').add_to(m)
+folium.TileLayer('Stamenterrain').add_to(m)
+folium.TileLayer('StamenToner').add_to(m)
+folium.TileLayer('Cartodbpositron').add_to(m)
+folium.TileLayer('Cartodbdark_matter').add_to(m)
+
+folium.LayerControl().add_to(m)
+
+folium.Marker(
+    location=[map_df.loc[0, 'lat'], map_df.loc[0, 'lon']], 
+    popup=f"Where you are 😉️",
+    icon=folium.Icon(icon="flag", color="green", prefix='fa'),
+    tooltip=pickup_adress
+).add_to(m)
+
+folium.Marker(
+    location=[map_df.loc[1, 'lat'], map_df.loc[1, 'lon']], 
+    popup=f"Where you go 🙂️",
+    icon=folium.Icon(icon="flag-checkered", color="black", prefix='fa'),
+    tooltip=dropoff_address
+).add_to(m)
+
+folium.PolyLine([(map_df.loc[0, 'lat'],map_df.loc[0, 'lon']),(map_df.loc[1, 'lat'], map_df.loc[1, 'lon'])], color="blue", weight=3, opacity=0.35).add_to(m)
+
+folium_static(m, width=1209, height=500)
+

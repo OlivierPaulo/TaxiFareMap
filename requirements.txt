@@ -15,3 +15,5 @@ scipy
 category_encoders==2.2.2
 herepy==2.1.1
 streamlit
+folium
+streamlit-folium

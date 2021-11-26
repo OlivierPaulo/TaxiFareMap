@@ -28,6 +28,27 @@ def haversine_vectorized(df,
     return 6371 * c
 
 
+def haversine2(df,
+            start_lat="pickup_latitude",
+            start_lon="pickup_longitude",
+            end_lat="dropoff_latitude",
+            end_lon="dropoff_longitude"):
+    """
+        Calculate the great circle distance between two points
+        on the earth (specified in decimal degrees).
+        Vectorized version of the haversine distance for pandas df
+        Computes distance in kms
+    """
+
+    lat_1_rad, lon_1_rad = np.radians(df[start_lat]), np.radians(df[start_lon])
+    lat_2_rad, lon_2_rad = np.radians(df[end_lat]), np.radians(df[end_lon])
+    dlon = lon_2_rad - lon_1_rad
+    dlat = lat_2_rad - lat_1_rad
+
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat_1_rad) * np.cos(lat_2_rad) * np.sin(dlon / 2.0) ** 2
+    c = 2 * np.arcsin(np.sqrt(a))
+    return 6371 * c
+
 def minkowski_distance(df, p,
                        start_lat="pickup_latitude",
                        start_lon="pickup_longitude",

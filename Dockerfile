@@ -1,6 +1,9 @@
 ### FROM the base image we want to build
 FROM python:3.8.6-buster
 
+###
+EXPOSE 8080
+
 ### COPY file needed for the Docker images
 COPY . .
 
@@ -10,4 +13,4 @@ RUN pip3 install -r requirements.txt
 RUN make install
 
 ### CMD apply the command that the container should run once it has started
-CMD streamlit run app.py 
+CMD streamlit run app.py --server.port 8080
